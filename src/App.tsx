@@ -35,12 +35,40 @@ export default function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects'>('dashboard');
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [showCreateProject, setShowCreateProject] = useState(false);
   
-  // States for updating task results in modal
+  // Create Project Form State
+  const [newProject, setNewProject] = useState({
+    name: '',
+    description: '',
+    deadline: '',
+    manager: currentUser.id
+  });
+
+  // State for updating task results in modal
   const [editResult, setEditResult] = useState('');
   const [editImage, setEditImage] = useState('');
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+  const handleCreateProject = () => {
+    if (!newProject.name || !newProject.deadline) {
+      alert('Vui lòng nhập tên dự án và deadline');
+      return;
+    }
+    const project: Project = {
+      id: `p${Date.now()}`,
+      name: newProject.name,
+      description: newProject.description,
+      deadline: newProject.deadline,
+      manager: newProject.manager,
+      status: 'Active',
+      groups: []
+    };
+    setProjects([project, ...projects]);
+    setShowCreateProject(false);
+    setNewProject({ name: '', description: '', deadline: '', manager: currentUser.id });
+  };
 
   const handleUpdateResult = () => {
     if (!viewingTask || !selectedProjectId) return;
@@ -80,7 +108,83 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
-      {/* Task Modal */}
+      {/* Create Project Modal */}
+      {showCreateProject && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowCreateProject(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-8">
+              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Briefcase className="text-indigo-600" />
+                Tạo dự án mới
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tên dự án</label>
+                  <input 
+                    type="text" 
+                    value={newProject.name}
+                    onChange={e => setNewProject({...newProject, name: e.target.value})}
+                    placeholder="VD: Phát triển Website Công ty..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Mô tả ngắn</label>
+                  <textarea 
+                    value={newProject.description}
+                    onChange={e => setNewProject({...newProject, description: e.target.value})}
+                    placeholder="Mục tiêu và phạm vi dự án..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-h-[100px]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hạn hoàn thành</label>
+                    <input 
+                      type="date" 
+                      value={newProject.deadline}
+                      onChange={e => setNewProject({...newProject, deadline: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Người quản lý</label>
+                    <select 
+                      value={newProject.manager}
+                      onChange={e => setNewProject({...newProject, manager: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                      {mockUsers.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowCreateProject(false)}
+                className="px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-800"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={handleCreateProject}
+                className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+              >
+                Khởi tạo dự án
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         {viewingTask && (
           <div 
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -282,7 +386,17 @@ export default function App() {
             </div>
             
             {(activeTab === 'dashboard' || (selectedProject && isManager)) && (
-              <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-100">
+              <button 
+                onClick={() => {
+                  if (selectedProject) {
+                    // Logic for adding task/group would go here
+                    alert('Chức năng thêm đầu mục công việc đang được cập nhật!');
+                  } else {
+                    setShowCreateProject(true);
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-100"
+              >
                 <Plus size={18} strokeWidth={2.5} />
                 {selectedProject ? 'Thêm công việc' : 'Tạo dự án'}
               </button>
