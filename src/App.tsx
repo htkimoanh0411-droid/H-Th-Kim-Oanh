@@ -70,6 +70,14 @@ export default function App() {
     setNewProject({ name: '', description: '', deadline: '', manager: currentUser.id });
   };
 
+  const handleDeleteProject = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('Bạn có chắc chắn muốn xóa dự án này? Toàn bộ dữ liệu công việc sẽ bị mất.')) {
+      setProjects(projects.filter(p => p.id !== id));
+      if (selectedProjectId === id) setSelectedProjectId(null);
+    }
+  };
+
   const handleUpdateResult = () => {
     if (!viewingTask || !selectedProjectId) return;
 
@@ -444,6 +452,8 @@ export default function App() {
                         key={project.id} 
                         project={project} 
                         onClick={() => setSelectedProjectId(project.id)}
+                        onDelete={(e) => handleDeleteProject(e, project.id)}
+                        isManager={project.manager === currentUser.id}
                       />
                     ))}
                   </div>
@@ -647,7 +657,7 @@ function StatCard({ label, value, color }: { label: string, value: string, color
   );
 }
 
-function ProjectCard({ project, onClick }: { project: Project, onClick: () => void, key?: string }) {
+function ProjectCard({ project, onClick, onDelete, isManager }: { project: Project, onClick: () => void, onDelete: (e: React.MouseEvent) => void, isManager: boolean, key?: string }) {
   const manager = mockUsers.find(u => u.id === project.manager);
   
   const allTasks = project.groups.flatMap(g => g.tasks);
@@ -667,14 +677,25 @@ function ProjectCard({ project, onClick }: { project: Project, onClick: () => vo
   return (
     <div 
       onClick={onClick}
-      className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all cursor-pointer group flex flex-col h-full"
+      className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all cursor-pointer group flex flex-col h-full relative"
     >
       <div className="flex justify-between items-start mb-4">
         <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
           <Briefcase size={24} />
         </div>
-        <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${project.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500'}`}>
-          {project.status}
+        <div className="flex items-center gap-2">
+          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${project.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500'}`}>
+            {project.status}
+          </div>
+          {isManager && (
+            <button 
+              onClick={onDelete}
+              className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+              title="Xóa dự án"
+            >
+              <Plus size={18} className="rotate-45" />
+            </button>
+          )}
         </div>
       </div>
       
