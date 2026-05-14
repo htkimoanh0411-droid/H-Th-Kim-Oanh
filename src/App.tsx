@@ -32,49 +32,68 @@ import { Project, Task, User, TaskGroup } from './types';
 import { mockProjects, mockUsers } from './mockData';
 
 export default function App() {
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('protask_users');
-    if (saved) {
+  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch initial data
+  React.useEffect(() => {
+    async function fetchData() {
       try {
-        return JSON.parse(saved);
+        const [projRes, userRes] = await Promise.all([
+          fetch('/api/projects'),
+          fetch('/api/users')
+        ]);
+        
+        if (projRes.ok && userRes.ok) {
+          const projs = await projRes.json();
+          const usrs = await userRes.json();
+          setProjects(projs);
+          setUsers(usrs);
+
+          // Get current user from localStorage fallback
+          const savedId = localStorage.getItem('protask_current_user_id');
+          if (savedId) {
+            const found = usrs.find((u: User) => u.id === savedId);
+            if (found) setCurrentUser(found);
+          } else {
+            setCurrentUser(usrs[0]);
+          }
+        }
       } catch (e) {
-        console.error('Error parsing users:', e);
+        console.error('Error fetching data:', e);
+      } finally {
+        setIsLoading(false);
       }
     }
-    return mockUsers;
-  });
+    fetchData();
+  }, []);
 
-  const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem('protask_projects');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error parsing projects:', e);
-      }
-    }
-    return mockProjects;
-  });
-
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    const savedId = localStorage.getItem('protask_current_user_id');
-    const savedUsers = localStorage.getItem('protask_users');
-    const currentUsers = savedUsers ? JSON.parse(savedUsers) : mockUsers;
-    
-    if (savedId) {
-      const found = currentUsers.find((u: User) => u.id === savedId);
-      if (found) return found;
-    }
-    return currentUsers[0];
-  });
+  // Save data to server when state changes
+  React.useEffect(() => {
+    if (isLoading) return;
+    const timer = setTimeout(() => {
+      fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(users)
+      }).catch(console.error);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [users, isLoading]);
 
   React.useEffect(() => {
-    localStorage.setItem('protask_users', JSON.stringify(users));
-  }, [users]);
-
-  React.useEffect(() => {
-    localStorage.setItem('protask_projects', JSON.stringify(projects));
-  }, [projects]);
+    if (isLoading) return;
+    const timer = setTimeout(() => {
+      fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projects)
+      }).catch(console.error);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [projects, isLoading]);
 
   React.useEffect(() => {
     localStorage.setItem('protask_current_user_id', currentUser.id);
@@ -380,6 +399,17 @@ export default function App() {
   };
 
   const isManager = selectedProject?.manager === currentUser.id;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-slate-500 font-bold animate-pulse">Đang tải dữ liệu hệ thống...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
