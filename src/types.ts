@@ -5,6 +5,12 @@ export interface User {
   name: string;
   avatar: string;
   role: string;
+  employeeId?: string;
+  rank?: string;
+  region?: string;
+  unit?: string;
+  department?: string;
+  staffGroup?: string;
 }
 
 export interface Task {

@@ -1,10 +1,54 @@
 import { Project, User } from './types';
 
 export const mockUsers: User[] = [
-  { id: 'u1', name: 'Nguyễn Văn A', role: 'Project Manager', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=A' },
-  { id: 'u2', name: 'Trần Thị B', role: 'Frontend Developer', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=B' },
-  { id: 'u3', name: 'Lê Văn C', role: 'Backend Developer', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=C' },
-  { id: 'u4', name: 'Phạm Thị D', role: 'Designer', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=D' },
+  { 
+    id: 'u1', 
+    name: 'Hồ Thị Kim Oanh', 
+    role: 'Project Manager', 
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Oanh',
+    employeeId: '005703',
+    rank: '3C',
+    region: 'SHE',
+    unit: 'Công ty Cổ phần Dịch vụ Cáp treo Bà Nà',
+    department: 'Phòng kế toán',
+    staffGroup: 'Khối sản xuất'
+  },
+  { 
+    id: 'u2', 
+    name: 'Trần Thị B', 
+    role: 'Frontend Developer', 
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=B',
+    employeeId: '005704',
+    rank: '2B',
+    region: 'SHE',
+    unit: 'Công ty Cổ phần Dịch vụ Cáp treo Bà Nà',
+    department: 'Phòng CNTT',
+    staffGroup: 'Khối kỹ thuật'
+  },
+  { 
+    id: 'u3', 
+    name: 'Lê Văn C', 
+    role: 'Backend Developer', 
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=C',
+    employeeId: '005705',
+    rank: '2C',
+    region: 'SHE',
+    unit: 'Công ty Cổ phần Dịch vụ Cáp treo Bà Nà',
+    department: 'Phòng CNTT',
+    staffGroup: 'Khối kỹ thuật'
+  },
+  { 
+    id: 'u4', 
+    name: 'Phạm Thị D', 
+    role: 'Designer', 
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=D',
+    employeeId: '005706',
+    rank: '2A',
+    region: 'SHE',
+    unit: 'Công ty Cổ phần Dịch vụ Cáp treo Bà Nà',
+    department: 'Phòng Thiết kế',
+    staffGroup: 'Khối sản xuất'
+  },
 ];
 
 export const mockProjects: Project[] = [

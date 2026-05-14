@@ -31,11 +31,14 @@ import { mockProjects, mockUsers } from './mockData';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]);
+  const [users, setUsers] = useState<User[]>(mockUsers);
   const [projects, setProjects] = useState<Project[]>(mockProjects);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'personnel'>('dashboard');
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState<{ projectId: string, groupId: string } | null>(null);
   
   // Create Project Form State
   const [newProject, setNewProject] = useState({
@@ -43,6 +46,85 @@ export default function App() {
     description: '',
     deadline: '',
     manager: currentUser.id
+  });
+
+  // Create Task Form State
+  const [newTask, setNewTask] = useState<Partial<Task>>({
+    title: '',
+    description: '',
+    deadline: '',
+    priority: 'Medium',
+    assignedTo: '',
+    status: 'Todo'
+  });
+
+  const [memberSearch, setMemberSearch] = useState('');
+  const [showMemberResults, setShowMemberResults] = useState(false);
+
+  const handleCreateTask = () => {
+    if (!newTask.title || !newTask.assignedTo || !newTask.deadline || !showCreateTask) {
+      alert('Vui lòng điền đầy đủ thông tin công việc và chọn người phụ trách');
+      return;
+    }
+
+    const task: Task = {
+      id: `t${Date.now()}`,
+      title: newTask.title!,
+      description: newTask.description || '',
+      deadline: newTask.deadline!,
+      assignedTo: newTask.assignedTo!,
+      priority: newTask.priority as 'Low' | 'Medium' | 'High',
+      status: 'Todo',
+      resultDetail: '',
+      imageUrl: ''
+    };
+
+    const updatedProjects = projects.map(p => {
+      if (p.id === showCreateTask.projectId) {
+        return {
+          ...p,
+          groups: p.groups.map(g => {
+            if (g.id === showCreateTask.groupId) {
+              return { ...g, tasks: [...g.tasks, task] };
+            }
+            return g;
+          })
+        };
+      }
+      return p;
+    });
+
+    setProjects(updatedProjects);
+    setShowCreateTask(null);
+    setNewTask({
+      title: '',
+      description: '',
+      deadline: '',
+      priority: 'Medium',
+      assignedTo: '',
+      status: 'Todo'
+    });
+    setMemberSearch('');
+  };
+
+  const filteredUsers = memberSearch 
+    ? users.filter(u => 
+        u.name.toLowerCase().includes(memberSearch.toLowerCase()) || 
+        (u.employeeId && u.employeeId.includes(memberSearch))
+      )
+    : [];
+
+  // Create User Form State
+  const [newUser, setNewUser] = useState<Partial<User>>({
+    name: '',
+    role: '',
+    employeeId: '',
+    rank: '',
+    region: 'SHE',
+    unit: '',
+    department: '',
+    staffGroup: '',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + Date.now()
   });
 
   // State for updating task results in modal
@@ -70,11 +152,59 @@ export default function App() {
     setNewProject({ name: '', description: '', deadline: '', manager: currentUser.id });
   };
 
+  const handleCreateUser = () => {
+    if (!newUser.name || !newUser.role || !newUser.employeeId) {
+      alert('Vui lòng nhập đầy đủ Mã nhân viên, Họ tên và Chức danh');
+      return;
+    }
+    const user: User = {
+      id: `u${Date.now()}`,
+      name: newUser.name!,
+      role: newUser.role!,
+      avatar: newUser.avatar!,
+      employeeId: newUser.employeeId,
+      rank: newUser.rank,
+      region: newUser.region,
+      unit: newUser.unit,
+      department: newUser.department,
+      staffGroup: newUser.staffGroup
+    };
+    setUsers([...users, user]);
+    setShowCreateUser(false);
+    setNewUser({
+      name: '',
+      role: '',
+      employeeId: '',
+      rank: '',
+      region: 'SHE',
+      unit: '',
+      department: '',
+      staffGroup: '',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + Date.now()
+    });
+    alert('Thêm nhân sự mới thành công!');
+  };
+
   const handleDeleteProject = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm('Bạn có chắc chắn muốn xóa dự án này? Toàn bộ dữ liệu công việc sẽ bị mất.')) {
       setProjects(projects.filter(p => p.id !== id));
       if (selectedProjectId === id) setSelectedProjectId(null);
+    }
+  };
+
+  const handleDeleteUser = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (users.length <= 1) {
+      alert('Không thể xóa nhân sự cuối cùng của hệ thống!');
+      return;
+    }
+    if (confirm('Bạn có chắc chắn muốn xóa nhân sự này khỏi hệ thống?')) {
+      const remainingUsers = users.filter(u => u.id !== id);
+      setUsers(remainingUsers);
+      if (currentUser.id === id) {
+        setCurrentUser(remainingUsers[0]);
+      }
     }
   };
 
@@ -91,6 +221,8 @@ export default function App() {
               if (t.id === viewingTask.id) {
                 const newTask: Task = { 
                   ...t, 
+                  assignedTo: viewingTask.assignedTo,
+                  resultTo: viewingTask.assignedTo, // Some types might use this if legacy
                   resultDetail: editResult, 
                   imageUrl: editImage,
                   status: editResult ? 'Review' : t.status 
@@ -116,6 +248,274 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
+      {/* Create Task Modal */}
+      {showCreateTask && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => { setShowCreateTask(null); setShowMemberResults(false); setMemberSearch(''); }}
+        >
+          <div 
+            className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-8 overflow-y-auto">
+              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <CheckSquare className="text-indigo-600" />
+                Tạo công việc mới
+              </h2>
+              
+              <div className="space-y-5">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tên công việc</label>
+                  <input 
+                    type="text" 
+                    value={newTask.title}
+                    onChange={e => setNewTask({...newTask, title: e.target.value})}
+                    placeholder="VD: Thiết kế giao diện Dashboard..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Mô tả chi tiết</label>
+                  <textarea 
+                    value={newTask.description}
+                    onChange={e => setNewTask({...newTask, description: e.target.value})}
+                    placeholder="Nội dung cần thực hiện..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-h-[80px]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hạn hoàn thành</label>
+                    <input 
+                      type="date" 
+                      value={newTask.deadline}
+                      onChange={e => setNewTask({...newTask, deadline: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Độ ưu tiên</label>
+                    <select 
+                      value={newTask.priority}
+                      onChange={e => setNewTask({...newTask, priority: e.target.value as any})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                      <option value="Low">Thấp</option>
+                      <option value="Medium">Trung bình</option>
+                      <option value="High">Cao</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Searchable Member Selection */}
+                <div className="relative">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1 tracking-wider">Người phụ trách</label>
+                  
+                  {newTask.assignedTo ? (
+                    <div className="flex items-center gap-4 bg-indigo-50 border border-indigo-100 p-3 rounded-2xl">
+                      <img 
+                        src={users.find(u => u.id === newTask.assignedTo)?.avatar} 
+                        className="w-10 h-10 rounded-full border-2 border-white shadow-sm" 
+                        alt="Assignee" 
+                      />
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-black text-slate-800 truncate">{users.find(u => u.id === newTask.assignedTo)?.name}</p>
+                        <p className="text-[10px] font-bold text-indigo-600 uppercase">{users.find(u => u.id === newTask.assignedTo)?.role} • {users.find(u => u.id === newTask.assignedTo)?.employeeId}</p>
+                      </div>
+                      <button 
+                        onClick={() => { setNewTask({...newTask, assignedTo: ''}); setMemberSearch(''); }}
+                        className="p-1 hover:bg-indigo-100 rounded-lg text-indigo-400 transition-colors"
+                      >
+                        <Plus size={18} className="rotate-45" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="text"
+                        value={memberSearch}
+                        onChange={(e) => { 
+                          setMemberSearch(e.target.value); 
+                          setShowMemberResults(true); 
+                        }}
+                        placeholder="Tìm theo tên hoặc mã nhân viên..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                      
+                      <AnimatePresence>
+                        {showMemberResults && filteredUsers.length > 0 && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl z-10 max-h-60 overflow-y-auto overflow-x-hidden custom-scrollbar"
+                          >
+                            {filteredUsers.map(user => (
+                              <div 
+                                key={user.id}
+                                onClick={() => {
+                                  setNewTask({...newTask, assignedTo: user.id});
+                                  setShowMemberResults(false);
+                                  setMemberSearch('');
+                                }}
+                                className="p-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 transition-colors border-b border-slate-50 last:border-0"
+                              >
+                                <img src={user.avatar} className="w-8 h-8 rounded-full shadow-sm" alt={user.name} />
+                                <div className="flex-1 overflow-hidden">
+                                  <p className="text-xs font-black text-slate-800 truncate">{user.name}</p>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{user.employeeId} • {user.role}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => { setShowCreateTask(null); setShowMemberResults(false); setMemberSearch(''); }}
+                className="px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-800"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={handleCreateTask}
+                className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+              >
+                Tạo công việc
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Create User Modal */}
+      {showCreateUser && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowCreateUser(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-8">
+              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Users className="text-indigo-600" />
+                Thêm nhân sự mới
+              </h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Mã nhân viên</label>
+                    <input 
+                      type="text" 
+                      value={newUser.employeeId}
+                      onChange={e => setNewUser({...newUser, employeeId: e.target.value})}
+                      placeholder="005703"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Họ và tên</label>
+                    <input 
+                      type="text" 
+                      value={newUser.name}
+                      onChange={e => setNewUser({...newUser, name: e.target.value})}
+                      placeholder="Hồ Thị Kim Oanh"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Chức danh</label>
+                    <input 
+                      type="text" 
+                      value={newUser.role}
+                      onChange={e => setNewUser({...newUser, role: e.target.value})}
+                      placeholder="Chuyên viên chính"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cấp bậc</label>
+                    <input 
+                      type="text" 
+                      value={newUser.rank}
+                      onChange={e => setNewUser({...newUser, rank: e.target.value})}
+                      placeholder="3C"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Vùng/Khối/Ban</label>
+                  <input 
+                    type="text" 
+                    value={newUser.region}
+                    onChange={e => setNewUser({...newUser, region: e.target.value})}
+                    placeholder="SHE"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Đơn vị</label>
+                  <input 
+                    type="text" 
+                    value={newUser.unit}
+                    onChange={e => setNewUser({...newUser, unit: e.target.value})}
+                    placeholder="Công ty Cổ phần Dịch vụ Cáp treo Bà Nà"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Phòng bộ phận</label>
+                  <input 
+                    type="text" 
+                    value={newUser.department}
+                    onChange={e => setNewUser({...newUser, department: e.target.value})}
+                    placeholder="Phòng kế toán"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Nhóm CBNV</label>
+                  <input 
+                    type="text" 
+                    value={newUser.staffGroup}
+                    onChange={e => setNewUser({...newUser, staffGroup: e.target.value})}
+                    placeholder="Khối sản xuất"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowCreateUser(false)}
+                className="px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-800"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={handleCreateUser}
+                className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+              >
+                Thêm nhân sự
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Create Project Modal */}
       {showCreateProject && (
         <div 
@@ -168,7 +568,7 @@ export default function App() {
                       onChange={e => setNewProject({...newProject, manager: e.target.value})}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                     >
-                      {mockUsers.map(u => (
+                      {users.map(u => (
                         <option key={u.id} value={u.id}>{u.name}</option>
                       ))}
                     </select>
@@ -218,11 +618,34 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-6 mb-8">
                   <div className="space-y-4">
                     <DetailItem icon={<Calendar size={18} />} label="Hạn hoàn thành" value={viewingTask.deadline} />
-                    <DetailItem 
-                      icon={<UserIcon size={18} />} 
-                      label="Người phụ trách" 
-                      value={mockUsers.find(u => u.id === viewingTask.assignedTo)?.name || 'N/A'} 
-                    />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-13">Người phụ trách</label>
+                      {isManager ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-50 flex items-center justify-center rounded-xl">
+                            <UserIcon size={18} className="text-slate-400" />
+                          </div>
+                          <select 
+                            value={viewingTask.assignedTo}
+                            onChange={(e) => {
+                              const updatedTask = { ...viewingTask, assignedTo: e.target.value };
+                              setViewingTask(updatedTask);
+                            }}
+                            className="text-sm font-bold text-slate-800 bg-transparent outline-none cursor-pointer border-b border-transparent hover:border-indigo-300"
+                          >
+                            {users.map(u => (
+                              <option key={u.id} value={u.id}>{u.name} ({u.employeeId})</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <DetailItem 
+                          icon={<UserIcon size={18} />} 
+                          label="Người phụ trách" 
+                          value={users.find(u => u.id === viewingTask.assignedTo)?.name || 'N/A'} 
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-4">
                     <DetailItem 
@@ -339,7 +762,12 @@ export default function App() {
             active={activeTab === 'projects' || !!selectedProjectId} 
             onClick={() => setActiveTab('projects')} 
           />
-          <SidebarItem icon={<Users size={20} />} label="Nhân sự" />
+          <SidebarItem 
+            icon={<Users size={20} />} 
+            label="Nhân sự" 
+            active={activeTab === 'personnel'}
+            onClick={() => { setActiveTab('personnel'); setSelectedProjectId(null); }} 
+          />
           <SidebarItem icon={<Settings size={20} />} label="Cài đặt" />
         </nav>
 
@@ -356,12 +784,12 @@ export default function App() {
           <select 
             value={currentUser.id}
             onChange={(e) => {
-              const u = mockUsers.find(user => user.id === e.target.value);
+              const u = users.find(user => user.id === e.target.value);
               if (u) setCurrentUser(u);
             }}
             className="w-full bg-white border border-slate-200 text-[10px] font-bold p-2 rounded-lg outline-none cursor-pointer hover:border-indigo-300"
           >
-            {mockUsers.map(u => (
+            {users.map(u => (
               <option key={u.id} value={u.id}>Đổi vai: {u.name}</option>
             ))}
           </select>
@@ -374,7 +802,7 @@ export default function App() {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10">
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-bold text-slate-800">
-              {selectedProject ? selectedProject.name : activeTab === 'dashboard' ? 'Tổng quan' : 'Tất cả Dự án'}
+              {selectedProject ? selectedProject.name : activeTab === 'dashboard' ? 'Tổng quan' : activeTab === 'personnel' ? 'Thông tin người dùng' : 'Tất cả Dự án'}
             </h1>
             {selectedProject && (
               <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider rounded">
@@ -393,12 +821,13 @@ export default function App() {
               />
             </div>
             
-            {(activeTab === 'dashboard' || (selectedProject && isManager)) && (
+            {(activeTab === 'dashboard' || activeTab === 'personnel' || (selectedProject && isManager)) && (
               <button 
                 onClick={() => {
-                  if (selectedProject) {
-                    // Logic for adding task/group would go here
-                    alert('Chức năng thêm đầu mục công việc đang được cập nhật!');
+                  if (activeTab === 'personnel') {
+                    setShowCreateUser(true);
+                  } else if (selectedProject) {
+                    setShowCreateTask({ projectId: selectedProject.id, groupId: selectedProject.groups[0]?.id || 'g1' });
                   } else {
                     setShowCreateProject(true);
                   }
@@ -406,7 +835,7 @@ export default function App() {
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-100"
               >
                 <Plus size={18} strokeWidth={2.5} />
-                {selectedProject ? 'Thêm công việc' : 'Tạo dự án'}
+                {activeTab === 'personnel' ? 'Tạo nhân sự' : selectedProject ? 'Thêm công việc' : 'Tạo dự án'}
               </button>
             )}
           </div>
@@ -414,7 +843,120 @@ export default function App() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-8">
-            {!selectedProject ? (
+            {activeTab === 'personnel' ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Selected User Detail View */}
+                  <div className="lg:col-span-2">
+                    <div className="bg-[#FFF5F5] rounded-[40px] p-12 relative overflow-hidden shadow-sm border border-[#FFE4E4]">
+                      {/* Decorative dot */}
+                      <div className="absolute top-8 right-8 w-12 h-12 bg-white/50 rounded-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 bg-rose-200 rounded-full" />
+                      </div>
+
+                      <div className="mb-12 flex items-start gap-8">
+                        <img src={currentUser.avatar} className="w-24 h-24 rounded-3xl shadow-xl border-4 border-white" alt="Avatar" />
+                        <div>
+                          <h1 className="text-5xl font-extralight text-slate-800 mb-2 leading-tight">
+                            Hồ sơ<br />nhân sự
+                          </h1>
+                          <p className="text-slate-500 font-medium">Chi tiết thông tin của {currentUser.name}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Mã nhân viên</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1]">
+                            {currentUser.employeeId || '—'}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Họ và tên</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1]">
+                            {currentUser.name}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Chức danh</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1]">
+                            {currentUser.role}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Cấp bậc nhân sự</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1]">
+                            {currentUser.rank || '—'}
+                          </div>
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Vùng/Khối/Ban</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1] w-full">
+                            {currentUser.region || '—'}
+                          </div>
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Đơn vị</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1] w-full">
+                            {currentUser.unit || '—'}
+                          </div>
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Phòng bộ phận</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1] w-full">
+                            {currentUser.department || '—'}
+                          </div>
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <label className="text-[10px] font-black text-[#5C2D2D] uppercase tracking-widest block px-1">Nhóm CBNV</label>
+                          <div className="bg-white rounded-full px-6 py-4 text-slate-700 font-medium shadow-sm border border-[#F5E1E1] w-full">
+                            {currentUser.staffGroup || '—'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Users Sidebar List */}
+                  <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Danh mục nhân sự</h3>
+                      <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{users.length}</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                      {users.map(user => (
+                        <div 
+                          key={user.id}
+                          onClick={() => setCurrentUser(user)}
+                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 group/user ${currentUser.id === user.id ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-300'}`}
+                        >
+                          <div className="relative">
+                            <img src={user.avatar} className="w-12 h-12 rounded-xl border-2 border-white shadow-sm" alt={user.name} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-black text-slate-800 truncate">{user.name}</p>
+                              <button 
+                                onClick={(e) => handleDeleteUser(e, user.id)}
+                                className="opacity-0 group-hover/user:opacity-100 p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                title="Xóa nhân sự"
+                              >
+                                <Plus size={14} className="rotate-45" />
+                              </button>
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase truncate">{user.role}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded uppercase">{user.employeeId}</span>
+                              <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{user.rank}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : !selectedProject ? (
               <div className="space-y-8">
                 {/* Stats */}
                 <div className="grid grid-cols-4 gap-6">
@@ -497,7 +1039,10 @@ export default function App() {
                           </div>
                         </div>
                         {isManager && (
-                          <button className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => setShowCreateTask({ projectId: selectedProject.id, groupId: group.id })}
+                            className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors"
+                          >
                             <Plus size={16} />
                             Thêm công việc
                           </button>
