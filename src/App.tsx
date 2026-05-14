@@ -137,6 +137,7 @@ export default function App() {
   // State for updating task results in modal
   const [editResult, setEditResult] = useState('');
   const [editImage, setEditImage] = useState('');
+  const [editStatus, setEditStatus] = useState<Task['status']>('Todo');
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
@@ -297,10 +298,9 @@ export default function App() {
                 const newTask: Task = { 
                   ...t, 
                   assignedTo: viewingTask.assignedTo,
-                  resultTo: viewingTask.assignedTo, // Some types might use this if legacy
                   resultDetail: editResult, 
                   imageUrl: editImage,
-                  status: editResult ? 'Review' : t.status 
+                  status: editStatus
                 };
                 setViewingTask(newTask);
                 return newTask;
@@ -314,9 +314,7 @@ export default function App() {
     });
 
     setProjects(updatedProjects);
-    setEditResult('');
-    setEditImage('');
-    alert('Đã cập nhật kết quả công việc!');
+    alert('Đã cập nhật trạng thái và kết quả công việc!');
   };
 
   const isManager = selectedProject?.manager === currentUser.id;
@@ -834,13 +832,26 @@ export default function App() {
                     <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200">
                       <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Upload size={16} className="text-indigo-600" />
-                        Cập nhật kết quả
+                        Cập nhật tiến độ & kết quả
                       </h3>
                       <div className="space-y-4">
                         <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Trạng thái công việc</label>
+                          <select 
+                            value={editStatus}
+                            onChange={(e) => setEditStatus(e.target.value as any)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                          >
+                            <option value="Todo">Chưa thực hiện</option>
+                            <option value="In Progress">Đang thực hiện</option>
+                            <option value="Review">Đang kiểm tra</option>
+                            <option value="Done">Đã hoàn thành</option>
+                          </select>
+                        </div>
+                        <div>
                           <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Báo cáo chi tiết</label>
                           <textarea 
-                            value={editResult || viewingTask.resultDetail || ''}
+                            value={editResult}
                             onChange={(e) => setEditResult(e.target.value)}
                             placeholder="Nhập chi tiết công việc đã thực hiện..."
                             className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-h-[100px]"
@@ -850,7 +861,7 @@ export default function App() {
                           <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">URL Hình ảnh (Nếu có)</label>
                           <input 
                             type="text"
-                            value={editImage || viewingTask.imageUrl || ''}
+                            value={editImage}
                             onChange={(e) => setEditImage(e.target.value)}
                             placeholder="Dán link ảnh tại đây..."
                             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -1305,6 +1316,7 @@ export default function App() {
                                   setViewingTask(task);
                                   setEditResult(task.resultDetail || '');
                                   setEditImage(task.imageUrl || '');
+                                  setEditStatus(task.status);
                                 }}
                                 className="group hover:bg-slate-50/80 transition-colors cursor-pointer"
                               >
