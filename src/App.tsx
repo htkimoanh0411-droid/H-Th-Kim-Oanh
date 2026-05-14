@@ -25,7 +25,8 @@ import {
   Image as ImageIcon,
   Upload,
   ExternalLink,
-  Layout
+  Layout,
+  Pencil
 } from 'lucide-react';
 import { Project, Task, User, TaskGroup } from './types';
 import { mockProjects, mockUsers } from './mockData';
@@ -41,6 +42,7 @@ export default function App() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState<{ projectId: string, groupId: string } | null>(null);
   const [showCreateGroup, setShowCreateGroup] = useState<string | null>(null); // projectId
+  const [editingGroup, setEditingGroup] = useState<{ projectId: string, groupId: string, title: string } | null>(null);
   
   // Create Group State
   const [newGroupName, setNewGroupName] = useState('');
@@ -183,6 +185,31 @@ export default function App() {
     setProjects(updatedProjects);
     setShowCreateGroup(null);
     setNewGroupName('');
+  };
+
+  const handleUpdateGroup = () => {
+    if (!editingGroup || !editingGroup.title) {
+      alert('Vui lòng nhập tên giai đoạn');
+      return;
+    }
+
+    const updatedProjects = projects.map(p => {
+      if (p.id === editingGroup.projectId) {
+        return {
+          ...p,
+          groups: p.groups.map(g => {
+            if (g.id === editingGroup.groupId) {
+              return { ...g, title: editingGroup.title };
+            }
+            return g;
+          })
+        };
+      }
+      return p;
+    });
+
+    setProjects(updatedProjects);
+    setEditingGroup(null);
   };
 
   const handleCreateUser = () => {
@@ -484,6 +511,50 @@ export default function App() {
                 className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
               >
                 Thêm giai đoạn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Group Modal */}
+      {editingGroup && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setEditingGroup(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-8">
+              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Layout className="text-indigo-600" />
+                Chỉnh sửa giai đoạn
+              </h2>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tên giai đoạn</label>
+                <input 
+                  type="text" 
+                  value={editingGroup.title}
+                  onChange={e => setEditingGroup({...editingGroup, title: e.target.value})}
+                  placeholder="VD: Giai đoạn 1: Khởi tạo..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setEditingGroup(null)}
+                className="px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-800"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={handleUpdateGroup}
+                className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+              >
+                Cập nhật
               </button>
             </div>
           </div>
@@ -1183,6 +1254,15 @@ export default function App() {
                           </div>
                           
                           <div className="flex items-center gap-2">
+                            {isManager && (
+                              <button 
+                                onClick={() => setEditingGroup({ projectId: selectedProject.id, groupId: group.id, title: group.title })}
+                                className="p-2.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
+                                title="Chỉnh sửa giai đoạn"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                            )}
                             {isManager && (
                               <button 
                                 onClick={() => handleDeleteGroup(selectedProject.id, group.id)}
