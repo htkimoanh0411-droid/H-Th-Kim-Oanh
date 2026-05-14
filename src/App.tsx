@@ -87,6 +87,7 @@ export default function App() {
   const [showCreateTask, setShowCreateTask] = useState<{ projectId: string, groupId: string } | null>(null);
   const [showCreateGroup, setShowCreateGroup] = useState<string | null>(null); // projectId
   const [editingGroup, setEditingGroup] = useState<{ projectId: string, groupId: string, title: string } | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   
   // Create Group State
   const [newGroupName, setNewGroupName] = useState('');
@@ -202,6 +203,23 @@ export default function App() {
     setProjects([project, ...projects]);
     setShowCreateProject(false);
     setNewProject({ name: '', description: '', deadline: '', manager: currentUser.id });
+  };
+
+  const handleUpdateProject = () => {
+    if (!editingProject || !editingProject.name || !editingProject.deadline) {
+      alert('Vui lòng nhập tên dự án và deadline');
+      return;
+    }
+
+    const updatedProjects = projects.map(p => {
+      if (p.id === editingProject.id) {
+        return editingProject;
+      }
+      return p;
+    });
+
+    setProjects(updatedProjects);
+    setEditingProject(null);
   };
 
   const handleCreateGroup = () => {
@@ -798,6 +816,83 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Edit Project Modal */}
+      {editingProject && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setEditingProject(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-8">
+              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Briefcase className="text-indigo-600" />
+                Chỉnh sửa dự án
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tên dự án</label>
+                  <input 
+                    type="text" 
+                    value={editingProject.name}
+                    onChange={e => setEditingProject({...editingProject, name: e.target.value})}
+                    placeholder="VD: Phát triển Website Công ty..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Mô tả ngắn</label>
+                  <textarea 
+                    value={editingProject.description}
+                    onChange={e => setEditingProject({...editingProject, description: e.target.value})}
+                    placeholder="Mục tiêu và phạm vi dự án..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-h-[100px]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hạn hoàn thành</label>
+                    <input 
+                      type="date" 
+                      value={editingProject.deadline}
+                      onChange={e => setEditingProject({...editingProject, deadline: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Người quản lý</label>
+                    <select 
+                      value={editingProject.manager}
+                      onChange={e => setEditingProject({...editingProject, manager: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setEditingProject(null)}
+                className="px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-800"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={handleUpdateProject}
+                className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+              >
+                Cập nhật dự án
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         {viewingTask && (
           <div 
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -1042,13 +1137,22 @@ export default function App() {
             {(activeTab === 'personnel' || activeTab === 'dashboard' || activeTab === 'projects' || (selectedProject && isManager)) && (
               <div className="flex gap-3">
                 {selectedProject && isManager && (
-                  <button 
-                    onClick={() => setShowCreateGroup(selectedProject.id)}
-                    className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
-                  >
-                    <Layout size={18} />
-                    Thêm giai đoạn
-                  </button>
+                  <>
+                    <button 
+                      onClick={() => setEditingProject(selectedProject)}
+                      className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
+                    >
+                      <Pencil size={16} />
+                      Sửa dự án
+                    </button>
+                    <button 
+                      onClick={() => setShowCreateGroup(selectedProject.id)}
+                      className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
+                    >
+                      <Layout size={18} />
+                      Thêm giai đoạn
+                    </button>
+                  </>
                 )}
                 <button 
                   onClick={() => {
@@ -1229,6 +1333,7 @@ export default function App() {
                         users={users}
                         onClick={() => setSelectedProjectId(project.id)}
                         onDelete={(e) => handleDeleteProject(e, project.id)}
+                        onEdit={(e) => setEditingProject(project)}
                         isManager={project.manager === currentUser.id}
                       />
                     ))}
@@ -1494,7 +1599,7 @@ function StatCard({ label, value, color }: { label: string, value: string, color
   );
 }
 
-function ProjectCard({ project, onClick, onDelete, isManager, users }: { project: Project, onClick: () => void, onDelete: (e: React.MouseEvent) => void, isManager: boolean, users: User[], key?: string }) {
+function ProjectCard({ project, onClick, onDelete, onEdit, isManager, users }: { project: Project, onClick: () => void, onDelete: (e: React.MouseEvent) => void, onEdit: (e: React.MouseEvent) => void, isManager: boolean, users: User[], key?: string }) {
   const allTasks = project.groups.flatMap(g => g.tasks);
   const totalTasks = allTasks.length;
   const doneTasks = allTasks.filter(t => t.status === 'Done').length;
@@ -1523,13 +1628,22 @@ function ProjectCard({ project, onClick, onDelete, isManager, users }: { project
             {project.status}
           </div>
           {isManager && (
-            <button 
-              onClick={onDelete}
-              className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-              title="Xóa dự án"
-            >
-              <Plus size={18} className="rotate-45" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={(e) => { e.stopPropagation(); onEdit(e); }}
+                className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                title="Sửa dự án"
+              >
+                <Pencil size={18} />
+              </button>
+              <button 
+                onClick={onDelete}
+                className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                title="Xóa dự án"
+              >
+                <Plus size={18} className="rotate-45" />
+              </button>
+            </div>
           )}
         </div>
       </div>
