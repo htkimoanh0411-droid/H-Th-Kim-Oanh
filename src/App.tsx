@@ -34,19 +34,38 @@ import { mockProjects, mockUsers } from './mockData';
 export default function App() {
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('protask_users');
-    return saved ? JSON.parse(saved) : mockUsers;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing users:', e);
+      }
+    }
+    return mockUsers;
   });
+
   const [projects, setProjects] = useState<Project[]>(() => {
     const saved = localStorage.getItem('protask_projects');
-    return saved ? JSON.parse(saved) : mockProjects;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing projects:', e);
+      }
+    }
+    return mockProjects;
   });
+
   const [currentUser, setCurrentUser] = useState<User>(() => {
     const savedId = localStorage.getItem('protask_current_user_id');
-    if (savedId && users) {
-      const found = users.find(u => u.id === savedId);
+    const savedUsers = localStorage.getItem('protask_users');
+    const currentUsers = savedUsers ? JSON.parse(savedUsers) : mockUsers;
+    
+    if (savedId) {
+      const found = currentUsers.find((u: User) => u.id === savedId);
       if (found) return found;
     }
-    return users[0];
+    return currentUsers[0];
   });
 
   React.useEffect(() => {
