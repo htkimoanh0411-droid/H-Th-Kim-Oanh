@@ -24,7 +24,8 @@ import {
   Target,
   Image as ImageIcon,
   Upload,
-  ExternalLink
+  ExternalLink,
+  Layout
 } from 'lucide-react';
 import { Project, Task, User, TaskGroup } from './types';
 import { mockProjects, mockUsers } from './mockData';
@@ -39,7 +40,11 @@ export default function App() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState<{ projectId: string, groupId: string } | null>(null);
+  const [showCreateGroup, setShowCreateGroup] = useState<string | null>(null); // projectId
   
+  // Create Group State
+  const [newGroupName, setNewGroupName] = useState('');
+
   // Create Project Form State
   const [newProject, setNewProject] = useState({
     name: '',
@@ -152,6 +157,34 @@ export default function App() {
     setNewProject({ name: '', description: '', deadline: '', manager: currentUser.id });
   };
 
+  const handleCreateGroup = () => {
+    if (!newGroupName || !showCreateGroup) {
+      alert('Vui lòng nhập tên giai đoạn');
+      return;
+    }
+
+    const updatedProjects = projects.map(p => {
+      if (p.id === showCreateGroup) {
+        return {
+          ...p,
+          groups: [
+            ...p.groups,
+            {
+              id: `g${Date.now()}`,
+              title: newGroupName,
+              tasks: []
+            }
+          ]
+        };
+      }
+      return p;
+    });
+
+    setProjects(updatedProjects);
+    setShowCreateGroup(null);
+    setNewGroupName('');
+  };
+
   const handleCreateUser = () => {
     if (!newUser.name || !newUser.role || !newUser.employeeId) {
       alert('Vui lòng nhập đầy đủ Mã nhân viên, Họ tên và Chức danh');
@@ -205,6 +238,21 @@ export default function App() {
       if (currentUser.id === id) {
         setCurrentUser(remainingUsers[0]);
       }
+    }
+  };
+
+  const handleDeleteGroup = (projectId: string, groupId: string) => {
+    if (confirm('Xóa giai đoạn này sẽ xóa toàn bộ công việc đi kèm. Bạn có chắc không?')) {
+      const updatedProjects = projects.map(p => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            groups: p.groups.filter(g => g.id !== groupId)
+          };
+        }
+        return p;
+      });
+      setProjects(updatedProjects);
     }
   };
 
@@ -392,6 +440,50 @@ export default function App() {
                 className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
               >
                 Tạo công việc
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Create Group Modal */}
+      {showCreateGroup && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowCreateGroup(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-8">
+              <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Layout className="text-indigo-600" />
+                Thêm giai đoạn mới
+              </h2>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tên giai đoạn</label>
+                <input 
+                  type="text" 
+                  value={newGroupName}
+                  onChange={e => setNewGroupName(e.target.value)}
+                  placeholder="VD: Giai đoạn 1: Khởi tạo..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowCreateGroup(null)}
+                className="px-6 py-2 text-sm font-bold text-slate-500 hover:text-slate-800"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={handleCreateGroup}
+                className="px-8 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+              >
+                Thêm giai đoạn
               </button>
             </div>
           </div>
@@ -821,22 +913,37 @@ export default function App() {
               />
             </div>
             
-            {(activeTab === 'dashboard' || activeTab === 'personnel' || (selectedProject && isManager)) && (
-              <button 
-                onClick={() => {
-                  if (activeTab === 'personnel') {
-                    setShowCreateUser(true);
-                  } else if (selectedProject) {
-                    setShowCreateTask({ projectId: selectedProject.id, groupId: selectedProject.groups[0]?.id || 'g1' });
-                  } else {
-                    setShowCreateProject(true);
-                  }
-                }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-100"
-              >
-                <Plus size={18} strokeWidth={2.5} />
-                {activeTab === 'personnel' ? 'Tạo nhân sự' : selectedProject ? 'Thêm công việc' : 'Tạo dự án'}
-              </button>
+            {(activeTab === 'personnel' || activeTab === 'dashboard' || activeTab === 'projects' || (selectedProject && isManager)) && (
+              <div className="flex gap-3">
+                {selectedProject && isManager && (
+                  <button 
+                    onClick={() => setShowCreateGroup(selectedProject.id)}
+                    className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
+                  >
+                    <Layout size={18} />
+                    Thêm giai đoạn
+                  </button>
+                )}
+                <button 
+                  onClick={() => {
+                    if (activeTab === 'personnel') {
+                      setShowCreateUser(true);
+                    } else if (selectedProject) {
+                      if (selectedProject.groups.length === 0) {
+                        alert('Vui lòng tạo ít nhất một giai đoạn trước khi thêm công việc!');
+                        return;
+                      }
+                      setShowCreateTask({ projectId: selectedProject.id, groupId: selectedProject.groups[0].id });
+                    } else if (activeTab === 'dashboard' || activeTab === 'projects') {
+                      setShowCreateProject(true);
+                    }
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-100"
+                >
+                  <Plus size={18} strokeWidth={2.5} />
+                  {activeTab === 'personnel' ? 'Tạo nhân sự' : selectedProject ? 'Thêm công việc' : 'Tạo dự án'}
+                </button>
+              </div>
             )}
           </div>
         </header>
@@ -993,6 +1100,7 @@ export default function App() {
                       <ProjectCard 
                         key={project.id} 
                         project={project} 
+                        users={users}
                         onClick={() => setSelectedProjectId(project.id)}
                         onDelete={(e) => handleDeleteProject(e, project.id)}
                         isManager={project.manager === currentUser.id}
@@ -1013,41 +1121,88 @@ export default function App() {
                     <p className="text-slate-500 text-sm">{selectedProject.description}</p>
                   </div>
                   <div className="flex -space-x-3">
-                    {mockUsers.map(user => (
-                      <img 
-                        key={user.id} 
-                        src={user.avatar} 
-                        alt={user.name} 
-                        className="w-10 h-10 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-100" 
-                        title={user.name}
-                      />
-                    ))}
+                    {Array.from(new Set(selectedProject.groups.flatMap(g => g.tasks).map(t => t.assignedTo))).map(userId => {
+                      const user = users.find(u => u.id === userId);
+                      if (!user) return null;
+                      return (
+                        <img 
+                          key={user.id} 
+                          src={user.avatar} 
+                          alt={user.name} 
+                          className="w-10 h-10 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-100" 
+                          title={user.name}
+                        />
+                      );
+                    })}
+                    {selectedProject.groups.flatMap(g => g.tasks).length === 0 && (
+                      <div className="text-[10px] text-slate-300 font-bold italic">Dự án chưa có nhân sự tham gia</div>
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-12">
-                  {selectedProject.groups.map(group => (
-                    <section key={group.id} className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 ring-4 ring-indigo-50/50">
-                            <Target size={20} />
+                  {selectedProject.groups.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[40px] border-2 border-dashed border-slate-100">
+                      <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center text-indigo-300 mb-6 shadow-sm">
+                        <Layout size={36} />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-800 mb-2">Dự án chưa được phân giai đoạn</h3>
+                      <p className="text-slate-400 text-sm mb-8 text-center max-w-sm">Hãy chia dự án của bạn thành các nhóm công việc lớn (ví dụ: Giai đoạn 1, Giai đoạn 2) để bắt đầu giao việc.</p>
+                      {isManager && (
+                        <button 
+                          onClick={() => setShowCreateGroup(selectedProject.id)}
+                          className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-3 shadow-xl shadow-indigo-100 hover:scale-105 active:scale-95 transition-all"
+                        >
+                          <Plus size={22} />
+                          Khởi tạo giai đoạn 1
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    selectedProject.groups.map(group => (
+                      <section key={group.id} className="space-y-6">
+                        <div className="flex items-center justify-between bg-white/50 p-4 rounded-3xl border border-slate-100/50">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm ring-1 ring-indigo-100">
+                              <Target size={24} />
+                            </div>
+                            <div>
+                              <h3 className="font-black text-xl text-slate-800 leading-none mb-1">{group.title}</h3>
+                              <div className="flex items-center gap-3">
+                                <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-indigo-500 rounded-full" 
+                                    style={{ width: `${group.tasks.length === 0 ? 0 : Math.round((group.tasks.filter(t => t.status === 'Done').length / group.tasks.length) * 100)}%` }}
+                                  />
+                                </div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                  {group.tasks.length === 0 ? 'Chưa có việc' : `${Math.round((group.tasks.filter(t => t.status === 'Done').length / group.tasks.length) * 100)}% Hoàn thành`}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-bold text-lg text-slate-800">{group.title}</h3>
-                            <p className="text-xs text-slate-400 font-medium">Tiến độ: {Math.round((group.tasks.filter(t => t.status === 'Done').length / group.tasks.length) * 100)}% ({group.tasks.filter(t => t.status === 'Done').length}/{group.tasks.length} Việc)</p>
+                          
+                          <div className="flex items-center gap-2">
+                            {isManager && (
+                              <button 
+                                onClick={() => handleDeleteGroup(selectedProject.id, group.id)}
+                                className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                title="Xóa giai đoạn"
+                              >
+                                <Plus size={20} className="rotate-45" />
+                              </button>
+                            )}
+                            {isManager && (
+                              <button 
+                                onClick={() => setShowCreateTask({ projectId: selectedProject.id, groupId: group.id })}
+                                className="flex items-center gap-2 text-xs font-bold text-indigo-600 bg-white border border-slate-100 hover:border-indigo-200 px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95"
+                              >
+                                <Plus size={16} strokeWidth={3} />
+                                Thêm công việc
+                              </button>
+                            )}
                           </div>
                         </div>
-                        {isManager && (
-                          <button 
-                            onClick={() => setShowCreateTask({ projectId: selectedProject.id, groupId: group.id })}
-                            className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors"
-                          >
-                            <Plus size={16} />
-                            Thêm công việc
-                          </button>
-                        )}
-                      </div>
 
                       <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                         <table className="w-full text-left border-collapse">
@@ -1130,8 +1285,9 @@ export default function App() {
                         </table>
                       </div>
                     </section>
-                  ))}
-                </div>
+                  ))
+                )}
+              </div>
               </div>
             )}
         </div>
@@ -1202,9 +1358,7 @@ function StatCard({ label, value, color }: { label: string, value: string, color
   );
 }
 
-function ProjectCard({ project, onClick, onDelete, isManager }: { project: Project, onClick: () => void, onDelete: (e: React.MouseEvent) => void, isManager: boolean, key?: string }) {
-  const manager = mockUsers.find(u => u.id === project.manager);
-  
+function ProjectCard({ project, onClick, onDelete, isManager, users }: { project: Project, onClick: () => void, onDelete: (e: React.MouseEvent) => void, isManager: boolean, users: User[], key?: string }) {
   const allTasks = project.groups.flatMap(g => g.tasks);
   const totalTasks = allTasks.length;
   const doneTasks = allTasks.filter(t => t.status === 'Done').length;
@@ -1279,9 +1433,22 @@ function ProjectCard({ project, onClick, onDelete, isManager }: { project: Proje
 
         <div className="flex items-center justify-between border-t border-slate-50 pt-4">
           <div className="flex -space-x-2">
-            {mockUsers.slice(0, 3).map((u, idx) => (
-              <img key={idx} src={u.avatar} alt="User" className="w-7 h-7 rounded-full border-2 border-white shadow-sm" />
+            {allTasks.slice(0, 3).map((t, idx) => (
+              <img 
+                key={idx} 
+                src={users.find(u => u.id === t.assignedTo)?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${idx}`} 
+                alt="User" 
+                className="w-7 h-7 rounded-full border-2 border-white shadow-sm" 
+              />
             ))}
+            {allTasks.length > 3 && (
+              <div className="w-7 h-7 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-400">
+                +{allTasks.length - 3}
+              </div>
+            )}
+            {allTasks.length === 0 && (
+              <div className="text-[10px] text-slate-300 font-bold italic">Chưa có nhân sự</div>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
             <Calendar size={12} />
