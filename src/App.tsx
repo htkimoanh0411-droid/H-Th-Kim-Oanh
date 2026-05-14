@@ -32,9 +32,34 @@ import { Project, Task, User, TaskGroup } from './types';
 import { mockProjects, mockUsers } from './mockData';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]);
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('protask_users');
+    return saved ? JSON.parse(saved) : mockUsers;
+  });
+  const [projects, setProjects] = useState<Project[]>(() => {
+    const saved = localStorage.getItem('protask_projects');
+    return saved ? JSON.parse(saved) : mockProjects;
+  });
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    const savedId = localStorage.getItem('protask_current_user_id');
+    if (savedId && users) {
+      const found = users.find(u => u.id === savedId);
+      if (found) return found;
+    }
+    return users[0];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('protask_users', JSON.stringify(users));
+  }, [users]);
+
+  React.useEffect(() => {
+    localStorage.setItem('protask_projects', JSON.stringify(projects));
+  }, [projects]);
+
+  React.useEffect(() => {
+    localStorage.setItem('protask_current_user_id', currentUser.id);
+  }, [currentUser]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'personnel'>('dashboard');
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
